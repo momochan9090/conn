@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fraud Detection System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Cairo', sans-serif; background: #f0f2f5; color: #1a1a2e; direction: rtl; min-height: 100vh; }
+  
+  .header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: white; padding: 1.5rem 2rem;
+    display: flex; align-items: center; gap: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+  .header-icon { font-size: 32px; }
+  .header h1 { font-size: 22px; font-weight: 700; }
+  .header p { font-size: 13px; opacity: 0.7; margin-top: 2px; }
+  .api-status { margin-right: auto; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  .container { max-width: 780px; margin: 2rem auto; padding: 0 1rem; }
+
+  .card {
+    background: white; border-radius: 16px; padding: 1.75rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    border: 1px solid #e8ecf0;
+  }
+  .card-title {
+    font-size: 12px; font-weight: 700; color: #6b7280;
+    letter-spacing: .08em; text-transform: uppercase;
+    margin-bottom: 1.25rem; padding-bottom: .75rem;
+    border-bottom: 2px solid #f3f4f6;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::before { content: ''; width: 4px; height: 16px; background: #0f3460; border-radius: 2px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .field label { font-size: 13px; color: #374151; font-weight: 600; }
+
+  .field input, .field select {
+    border: 2px solid #e5e7eb; border-radius: 10px;
+    padding: 10px 14px; font-size: 14px; color: #1a1a2e;
+    font-family: 'Cairo', sans-serif; background: #fafafa;
+    transition: all 0.2s;
+  }
+  .field input:focus, .field select:focus {
+    outline: none; border-color: #0f3460;
+    background: white; box-shadow: 0 0 0 4px rgba(15,52,96,0.1);
+  }
+
+  .user-badge {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 10px;
+    border: 2px solid #e5e7eb; background: #fafafa;
+    font-size: 13px; color: #6b7280; min-height: 46px;
+    transition: all 0.3s;
+  }
+  .user-badge.new { border-color: #22c55e; background: #f0fdf4; color: #166534; }
+  .user-badge.exists { border-color: #3b82f6; background: #eff6ff; color: #1e40af; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; transition: background 0.3s; }
+  .dot.idle { background: #d1d5db; }
+  .dot.new { background: #22c55e; }
+  .dot.exists { background: #3b82f6; }
+
+  .cum-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-top: 1rem; }
+  .cum-card {
+    background: linear-gradient(135deg, #f8faff, #eef2ff);
+    border: 1px solid #c7d2fe; border-radius: 12px;
+    padding: 1rem; text-align: center;
+  }
+  .cum-card .val { font-size: 24px; font-weight: 700; color: #3730a3; }
+  .cum-card .lbl { font-size: 11px; color: #6b7280; margin-top: 4px; line-height: 1.4; }
+
+  .submit-btn {
+    width: 100%; padding: 15px; margin-top: 1.5rem;
+    background: linear-gradient(135deg, #1a1a2e, #0f3460);
+    color: white; border: none; border-radius: 12px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    transition: all 0.2s; letter-spacing: 0.02em;
+    box-shadow: 0 4px 15px rgba(15,52,96,0.3);
+  }
+  .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(15,52,96,0.4); }
+  .submit-btn:active { transform: translateY(0); }
+  .submit-btn:disabled { background: #9ca3af; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .result-box { margin-top: 1.5rem; border-radius: 16px; overflow: hidden; border: 1px solid #e5e7eb; }
+  .result-header { display: flex; align-items: center; gap: 14px; padding: 1.5rem; }
+  .result-header.fraud { background: linear-gradient(135deg, #fef2f2, #fee2e2); border-bottom: 1px solid #fecaca; }
+  .result-header.safe { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-bottom: 1px solid #bbf7d0; }
+  .result-icon { font-size: 32px; }
+  .result-verdict { font-size: 22px; font-weight: 700; }
+  .result-header.fraud .result-verdict { color: #dc2626; }
+  .result-header.safe .result-verdict { color: #16a34a; }
+  .result-sub { font-size: 13px; margin-top: 3px; }
+  .result-header.fraud .result-sub { color: #b91c1c; }
+  .result-header.safe .result-sub { color: #15803d; }
+
+  .models-row { display: grid; grid-template-columns: repeat(3,1fr); }
+  .model-cell { padding: 1rem; text-align: center; border-right: 1px solid #f3f4f6; }
+  .model-cell:last-child { border-right: none; }
+  .model-name { font-size: 11px; color: #9ca3af; margin-bottom: 6px; font-weight: 600; }
+  .model-val { font-size: 16px; font-weight: 700; }
+  .model-val.fraud { color: #dc2626; }
+  .model-val.safe { color: #16a34a; }
+  .model-pct { font-size: 13px; color: #6b7280; margin-top: 2px; }
+
+  .txn-info {
+    background: #f8faff; border-radius: 10px; padding: .75rem 1rem;
+    margin-top: .75rem; font-size: 12px; color: #6b7280;
+  }
+  .txn-info span { color: #3730a3; font-weight: 700; }
+
+  .error-msg {
+    background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
+    padding: .75rem 1rem; border-radius: 10px; margin-top: 1rem; font-size: 14px;
+  }
+
+  @media(max-width:600px) {
+    .grid2, .grid3, .cum-grid, .models-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-icon">🔍</span>
+  <div>
+    <h1>Fraud Detection System</h1>
+    <p>نظام كشف الاحتيال بالذكاء الاصطناعي</p>
+  </div>
+  <div class="api-status">
+    <div class="status-dot" id="api-dot"></div>
+    <span id="api-status">جاري الاتصال...</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-title">بيانات المستخدم</div>
+    <div class="grid2">
+      <div class="field">
+        <label>اسم المستخدم</label>
+        <input type="text" id="username" placeholder="ahmed_ali"/>
+      </div>
+      <div class="field">
+        <label>حالة المستخدم</label>
+        <div class="user-badge" id="user-badge">
+          <div class="dot idle" id="sdot"></div>
+          <span id="stext">في انتظار الاسم...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">بيانات المعاملة</div>
+    <div class="grid2" style="margin-bottom:16px">
+      <div class="field"><label>مبلغ المعاملة</label><input type="number" id="amount" placeholder="500" min="0"/></div>
+      <div class="field"><label>رصيد الحساب</label><input type="number" id="balance" placeholder="12000" min="0"/></div>
+    </div>
+    <div class="grid3" style="margin-bottom:16px">
+      <div class="field">
+        <label>نوع الجهاز</label>
+        <select id="device">
+          <option value="">اختر...</option>
+          <option>Mobile</option><option>Laptop</option><option>Tablet</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>فئة التاجر</label>
+        <select id="merchant">
+          <option value="">اختر...</option>
+          <option>Electronics</option><option>Travel</option>
+          <option>Clothing</option><option>Restaurants</option><option>Groceries</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>نوع الكارت</label>
+        <select id="card_type">
+          <option value="">اختر...</option>
+          <option>Visa</option><option>Mastercard</option>
+          <option>Amex</option><option>Discover</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>عمر الكارت (شهر)</label><input type="number" id="card_age" placeholder="24" min="0"/></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">القيم التراكمية (محسوبة تلقائياً)</div>
+    <div style="font-size:12px;color:#9ca3af">بتتجيب من تاريخ المستخدم في قاعدة البيانات على السيرفر</div>
+    <div class="cum-grid">
+      <div class="cum-card"><div class="val" id="c1">—</div><div class="lbl">معاملات اليوم</div></div>
+      <div class="cum-card"><div class="val" id="c2">—</div><div class="lbl">متوسط 7 أيام</div></div>
+      <div class="cum-card"><div class="val" id="c3">—</div><div class="lbl">Fraud 7 أيام</div></div>
+      <div class="cum-card"><div class="val" id="c4">—</div><div class="lbl">إجمالي Fraud</div></div>
+    </div>
+  </div>
+
+  <button class="submit-btn" id="btn" onclick="submitTransaction()">🔍 فحص المعاملة</button>
+  <div id="error-area"></div>
+  <div id="result-area"></div>
+
+</div>
+
+<script>
+var API = "https://conn-vfad-production.up.railway.app";
+
+// تحقق من حالة الـ API
+fetch(API + "/health").then(function(r) {
+  if (r.ok) {
+    document.getElementById("api-dot").style.background = "#22c55e";
+    document.getElementById("api-status").textContent = "API شغالة";
+  }
+}).catch(function() {
+  document.getElementById("api-dot").style.background = "#ef4444";
+  document.getElementById("api-status").textContent = "API مش شغالة";
+});
+
+var timer;
+
+document.getElementById("username").addEventListener("input", function() {
+  clearTimeout(timer);
+  var u = this.value.trim();
+  if (!u) {
+    document.getElementById("sdot").className = "dot idle";
+    document.getElementById("stext").textContent = "في انتظار الاسم...";
+    document.getElementById("user-badge").className = "user-badge";
+    resetCum();
+    return;
+  }
+  timer = setTimeout(function() { loadUser(u); }, 600);
+});
+
+document.getElementById("amount").addEventListener("input", function() {
+  var u = document.getElementById("username").value.trim();
+  if (u) loadUser(u);
+});
+
+function resetCum() {
+  ["c1","c2","c3","c4"].forEach(function(id) {
+    document.getElementById(id).textContent = "—";
+  });
+}
+
+function loadUser(u) {
+  fetch(API + "/user/" + u + "/history").then(function(r) {
+    var badge = document.getElementById("user-badge");
+    var dot = document.getElementById("sdot");
+    var txt = document.getElementById("stext");
+    if (r.ok) {
+      r.json().then(function(d) {
+        var fc = d.transactions.filter(function(t) { return t.final_verdict === "Fraud"; }).length;
+        dot.className = "dot exists";
+        badge.className = "user-badge exists";
+        txt.textContent = "موجود — " + d.total_transactions + " معاملة | " + fc + " fraud";
+        var today = new Date().toISOString().slice(0,10);
+        var todayCount = d.transactions.filter(function(t) { return t.timestamp.slice(0,10) === today; }).length + 1;
+        var s7 = new Date(Date.now() - 7*864e5).toISOString();
+        var l7 = d.transactions.filter(function(t) { return t.timestamp >= s7; });
+        var amt = parseFloat(document.getElementById("amount").value) || 0;
+        var amts = l7.map(function(t) { return t.Transaction_Amount; }).concat([amt]);
+        var avg7 = (amts.reduce(function(a,b) { return a+b; }, 0) / amts.length).toFixed(2);
+        var failed7 = l7.filter(function(t) { return t.final_verdict === "Fraud"; }).length;
+        document.getElementById("c1").textContent = todayCount;
+        document.getElementById("c2").textContent = avg7;
+        document.getElementById("c3").textContent = failed7;
+        document.getElementById("c4").textContent = fc;
+      });
+    } else {
+      dot.className = "dot new";
+      badge.className = "user-badge new";
+      txt.textContent = "مستخدم جديد — هيتسجل لأول مرة";
+      document.getElementById("c1").textContent = "1";
+      document.getElementById("c2").textContent = "0";
+      document.getElementById("c3").textContent = "0";
+      document.getElementById("c4").textContent = "0";
+    }
+  }).catch(function() {
+    document.getElementById("stext").textContent = "تعذر الاتصال بالسيرفر";
+  });
+}
+
+function submitTransaction() {
+  var username = document.getElementById("username").value.trim();
+  var amount = document.getElementById("amount").value;
+  var balance = document.getElementById("balance").value;
+  var device = document.getElementById("device").value;
+  var merchant = document.getElementById("merchant").value;
+  var card_type = document.getElementById("card_type").value;
+  var card_age = document.getElementById("card_age").value;
+
+  if (!username || !amount || !balance || !device || !merchant || !card_type || !card_age) {
+    document.getElementById("error-area").innerHTML = '<div class="error-msg">⚠ من فضلك املأ كل الحقول</div>';
+    return;
+  }
+
+  document.getElementById("error-area").innerHTML = "";
+  document.getElementById("result-area").innerHTML = "";
+  document.getElementById("btn").disabled = true;
+  document.getElementById("btn").textContent = "⏳ جاري الفحص...";
+
+  var body = {
+    username: username,
+    Transaction_Amount: parseFloat(amount),
+    Account_Balance: parseFloat(balance),
+    Device_Type: device,
+    Merchant_Category: merchant,
+    Card_Type: card_type,
+    Card_Age: parseInt(card_age)
+  };
+
+  fetch(API + "/transaction", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  }).then(function(r) {
+    return r.json();
+  }).then(function(d) {
+    var isFraud = d.final_verdict === "Fraud";
+    var cls = isFraud ? "fraud" : "safe";
+    var icon = isFraud ? "⚠️" : "✅";
+    var pct = (d.avg_probability * 100).toFixed(1);
+
+    var modelsHTML = [
+      {name: "Random Forest", v: d.rf_verdict, p: d.rf_probability},
+      {name: "XGBoost", v: d.xgb_verdict, p: d.xgb_probability},
+      {name: "LightGBM", v: d.lgb_verdict, p: d.lgb_probability}
+    ].map(function(m) {
+      return '<div class="model-cell"><div class="model-name">' + m.name + '</div>' +
+             '<div class="model-val ' + (m.v === "Fraud" ? "fraud" : "safe") + '">' + m.v + '</div>' +
+             '<div class="model-pct">' + (m.p * 100).toFixed(1) + '%</div></div>';
+    }).join("");
+
+    document.getElementById("result-area").innerHTML =
+      '<div class="result-box">' +
+        '<div class="result-header ' + cls + '">' +
+          '<span class="result-icon">' + icon + '</span>' +
+          '<div>' +
+            '<div class="result-verdict">' + (isFraud ? "احتيال محتمل" : "معاملة آمنة") + '</div>' +
+            '<div class="result-sub">متوسط الاحتمالية: ' + pct + '% — ' + d.fraud_votes + '/3 موديلات قالت Fraud</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="models-row">' + modelsHTML + '</div>' +
+      '</div>' +
+      '<div class="txn-info">رقم المعاملة: <span>' + d.transaction_id + '</span></div>';
+
+    loadUser(username);
+  }).catch(function() {
+    document.getElementById("error-area").innerHTML = '<div class="error-msg">❌ تعذر الاتصال بالسيرفر</div>';
+  }).finally(function() {
+    document.getElementById("btn").disabled = false;
+    document.getElementById("btn").textContent = "🔍 فحص المعاملة";
+  });
+}
+</script>
+</body>
+</html>
