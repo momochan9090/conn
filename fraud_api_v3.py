@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field
 import joblib, pandas as pd, numpy as np, sqlite3, os
 from datetime import datetime, timedelta
 
-MODELS_PATH = r"D:\model_ai\fraud_models"
-DB_PATH     = r"D:\model_ai\users_data\transactions.db"
+MODELS_PATH = "/app"
+DB_PATH     = "/app/transactions.db"
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 try:
