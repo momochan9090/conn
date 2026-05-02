@@ -12,7 +12,7 @@ try:
     rf        = joblib.load(os.path.join(MODELS_PATH, "rf_model.pkl"))
     xgb_model = joblib.load(os.path.join(MODELS_PATH, "xgb_model.pkl"))
     os.environ["LIGHTGBM_EXEC_PATH"] = ""
-        lgb_model = joblib.load(os.path.join(MODELS_PATH, "lgb_model.pkl"))
+    lgb_model = joblib.load(os.path.join(MODELS_PATH, "lgb_model.pkl"))
 except Exception as e:
     raise RuntimeError(f"فشل تحميل الموديلات: {e}")
 
