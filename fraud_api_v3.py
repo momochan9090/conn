@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 import joblib, pandas as pd, numpy as np, sqlite3, os
 from datetime import datetime, timedelta
-
+import os
 MODELS_PATH = "/app"
 DB_PATH     = "/app/transactions.db"
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
@@ -11,7 +11,8 @@ os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 try:
     rf        = joblib.load(os.path.join(MODELS_PATH, "rf_model.pkl"))
     xgb_model = joblib.load(os.path.join(MODELS_PATH, "xgb_model.pkl"))
-    lgb_model = joblib.load(os.path.join(MODELS_PATH, "lgb_model.pkl"))
+    os.environ["LIGHTGBM_EXEC_PATH"] = ""
+        lgb_model = joblib.load(os.path.join(MODELS_PATH, "lgb_model.pkl"))
 except Exception as e:
     raise RuntimeError(f"فشل تحميل الموديلات: {e}")
 
