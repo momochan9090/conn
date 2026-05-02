@@ -134,7 +134,12 @@ class TransactionResponse(BaseModel):
     cumulative: dict
 
 app = FastAPI(title="Fraud Detection API", version="3.0.0")
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 @app.get("/")
 def root(): return {"message":"Fraud Detection API v3","ui":"/ui","docs":"/docs"}
 
