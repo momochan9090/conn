@@ -232,7 +232,10 @@ document.getElementById("amount").addEventListener("input",()=>{const u=document
 ["balance","device","merchant","card_type","card_age"].forEach(id=>{
   document.getElementById(id).addEventListener("input",checkBtn);
   document.getElementById(id).addEventListener("change",checkBtn);});
-function checkBtn(){document.getElementById("btn").disabled=!["username","amount","balance","device","merchant","card_type","card_age"].every(id=>document.getElementById(id).value.trim()!=="");}
+function checkBtn(){
+  const filled=["username","amount","balance","device","merchant","card_type","card_age"].every(id=>document.getElementById(id).value.toString().trim()!=="");
+  document.getElementById("btn").disabled=!filled;
+}
 document.getElementById("btn").addEventListener("click",async()=>{
   document.getElementById("err").innerHTML="";document.getElementById("res").innerHTML="";
   document.getElementById("btn").disabled=true;document.getElementById("btn").textContent="جاري الفحص...";
