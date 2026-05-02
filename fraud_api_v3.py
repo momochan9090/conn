@@ -205,6 +205,7 @@ def ui():
 <script>
 document.addEventListener("DOMContentLoaded",function(){
 const API=window.location.origin;
+let timer;
 async function loadUser(u){
   try{
     const r=await fetch(API+"/user/"+u+"/history");
