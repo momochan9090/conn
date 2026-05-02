@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 import joblib, pandas as pd, numpy as np, sqlite3, os
 from datetime import datetime, timedelta
+from fastapi.middleware.cors import CORSMiddleware
 import os
 MODELS_PATH = "/app"
 DB_PATH     = "/app/transactions.db"
