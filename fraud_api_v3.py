@@ -203,8 +203,8 @@ def ui():
 <div id="err"></div><div id="res"></div>
 </div>
 <script>
+document.addEventListener("DOMContentLoaded",function(){
 const API=window.location.origin;
-let timer;
 async function loadUser(u){
   try{
     const r=await fetch(API+"/user/"+u+"/history");
@@ -252,6 +252,7 @@ document.getElementById("btn").addEventListener("click",async()=>{
     loadUser(document.getElementById("username").value.trim());
   }catch{document.getElementById("err").innerHTML="<div class=\"error\">تعذر الاتصال بالسيرفر</div>";}
   finally{document.getElementById("btn").disabled=false;document.getElementById("btn").textContent="&#128269; فحص المعاملة";}
+});
 });
 </script></body></html>""")
 
