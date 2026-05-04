@@ -350,6 +350,7 @@ function submitTransaction() {
           '<span class="result-icon">' + icon + '</span>' +
           '<div>' +
             '<div class="result-verdict">' + (isFraud ? "احتيال محتمل" : "معاملة آمنة") + '</div>' +
+(d.avg_probability === 1.0 ? '<div style="color:#dc2626;font-size:14px;margin-top:6px;font-weight:600">⚠ لا يمكن اتمام المعاملة — لا يوجد رصيد كافي في الحساب المرفق</div>' : '') +
             '<div class="result-sub">متوسط الاحتمالية: ' + pct + '% — ' + d.fraud_votes + '/3 موديلات قالت Fraud</div>' +
           '</div>' +
         '</div>' +
