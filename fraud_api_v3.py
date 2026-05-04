@@ -265,6 +265,8 @@ document.getElementById("btn").addEventListener("click",async()=>{
 
 @app.post("/transaction", response_model=TransactionResponse)
 def register_transaction(t: TransactionInput):
+    if t.Transaction_Amount > t.Account_Balance:
+        raise HTTPException(400, "لا يمكن اتمام المعاملة: المبلغ أكبر من رصيد الحساب")
     if t.Device_Type not in DEVICE_RISK: raise HTTPException(400, f"Device_Type: {list(DEVICE_RISK)}")
     if t.Merchant_Category not in MERCHANT_RISK: raise HTTPException(400, f"Merchant_Category: {list(MERCHANT_RISK)}")
     if t.Card_Type not in CARD_RISK: raise HTTPException(400, f"Card_Type: {list(CARD_RISK)}")
