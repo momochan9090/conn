@@ -266,7 +266,33 @@ document.getElementById("btn").addEventListener("click",async()=>{
 @app.post("/transaction", response_model=TransactionResponse)
 def register_transaction(t: TransactionInput):
     if t.Transaction_Amount > t.Account_Balance:
-        raise HTTPException(400, "لا يمكن اتمام المعاملة: المبلغ أكبر من رصيد الحساب")
+        now = datetime.now()
+        transaction_id = "TXN-" + t.username + "-" + str(int(now.timestamp()))
+        is_weekend = 1 if now.weekday() >= 5 else 0
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("INSERT INTO transactions VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (t.username, transaction_id, now.isoformat(), t.Transaction_Amount, t.Account_Balance,
+             t.Device_Type, t.Merchant_Category, t.Card_Type, t.Card_Age, is_weekend,
+             0, 1, t.Transaction_Amount, 0,
+             DEVICE_RISK.get(t.Device_Type, 0), MERCHANT_RISK.get(t.Merchant_Category, 0), CARD_RISK.get(t.Card_Type, 0),
+             1 if t.Device_Type=="Laptop" else 0, 1 if t.Device_Type=="Mobile" else 0, 1 if t.Device_Type=="Tablet" else 0,
+             1 if t.Merchant_Category=="Clothing" else 0, 1 if t.Merchant_Category=="Electronics" else 0,
+             1 if t.Merchant_Category=="Groceries" else 0, 1 if t.Merchant_Category=="Restaurants" else 0,
+             1 if t.Merchant_Category=="Travel" else 0,
+             1 if t.Card_Type=="Amex" else 0, 1 if t.Card_Type=="Discover" else 0,
+             1 if t.Card_Type=="Mastercard" else 0, 1 if t.Card_Type=="Visa" else 0,
+             "Fraud", 1.0, "Fraud", 1.0, "Fraud", 1.0, "Fraud", 3, 1.0))
+        conn.commit()
+        conn.close()
+        return TransactionResponse(
+            username=t.username, transaction_id=transaction_id, timestamp=now.isoformat(),
+            final_verdict="Fraud", fraud_votes=3, avg_probability=1.0,
+            rf_verdict="Fraud", rf_probability=1.0,
+            xgb_verdict="Fraud", xgb_probability=1.0,
+            lgb_verdict="Fraud", lgb_probability=1.0,
+            cumulative={"message": "لا يمكن اتمام المعاملة: المبلغ أكبر من رصيد الحساب",
+                       "Daily_Transaction_Count": 1, "Avg_Transaction_Amount_7d": t.Transaction_Amount,
+                       "Failed_Transaction_Count_7d": 1, "Previous_Fraudulent_Activity": 0})
     if t.Device_Type not in DEVICE_RISK: raise HTTPException(400, f"Device_Type: {list(DEVICE_RISK)}")
     if t.Merchant_Category not in MERCHANT_RISK: raise HTTPException(400, f"Merchant_Category: {list(MERCHANT_RISK)}")
     if t.Card_Type not in CARD_RISK: raise HTTPException(400, f"Card_Type: {list(CARD_RISK)}")
