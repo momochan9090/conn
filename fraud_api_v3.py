@@ -104,11 +104,42 @@ def run_voting(df):
         prob = float(model.predict_proba(df)[:,1][0])
         pred = int(model.predict(df)[0])
         results[name] = {"prob":round(prob,4),"pred":pred,"verdict":"Fraud" if pred==1 else "Safe"}
+    
     fraud_votes = sum(r["pred"] for r in results.values())
-    return {**results,"fraud_votes":fraud_votes,
-            "avg_probability":round(float(np.mean([r["prob"] for r in results.values()])),4),
-            "final_verdict":"Fraud" if fraud_votes>=2 else "Safe"}
-
+    avg_prob    = round(float(np.mean([r["prob"] for r in results.values()])),4)
+    
+    # حساب Transaction Risk بدون التاريخ
+    df_no_history = df.copy()
+    df_no_history["Previous_Fraudulent_Activity"]  = 0
+    df_no_history["Failed_Transaction_Count_7d"]   = 0
+    
+    txn_probs = []
+    for name, model in [("rf",rf),("xgb",xgb_model),("lgb",lgb_model)]:
+        txn_probs.append(float(model.predict_proba(df_no_history)[:,1][0]))
+    txn_risk = round(float(np.mean(txn_probs)),4)
+    
+    # تطبيق المنطق
+    if txn_risk < 0.20:
+        # المعاملة نفسها آمنة جداً — Safe بغض النظر عن التاريخ
+        final_verdict = "Safe"
+        avg_prob = txn_risk
+        for name in results:
+            results[name]["verdict"] = "Safe"
+            results[name]["prob"] = txn_risk
+        fraud_votes = 0
+    elif txn_risk > 0.50:
+        # المعاملة نفسها خطيرة — زود الاحتمالية
+        boosted_prob = round(min(avg_prob * 1.3, 1.0), 4)
+        avg_prob = boosted_prob
+        final_verdict = "Fraud" if fraud_votes >= 2 else "Safe"
+    else:
+        # المنطقة الرمادية — الموديل يقرر بالتاريخ عادي
+        final_verdict = "Fraud" if fraud_votes >= 2 else "Safe"
+    
+    return {**results, "fraud_votes":fraud_votes,
+            "avg_probability":avg_prob,
+            "final_verdict":final_verdict,
+            "txn_risk":txn_risk}
 class TransactionInput(BaseModel):
     username: str
     Transaction_Amount: float
