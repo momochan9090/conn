@@ -296,6 +296,113 @@ document.getElementById("btn").addEventListener("click",async()=>{
 
 @app.post("/transaction", response_model=TransactionResponse)
 def register_transaction(t: TransactionInput):
+    # حساب تصنيف المستخدم من التاريخ
+    conn_check = sqlite3.connect(DB_PATH)
+    avg_historical = conn_check.execute(
+        "SELECT AVG(Transaction_Amount) FROM transactions WHERE username=?",
+        (t.username,)).fetchone()[0]
+    total_txns = conn_check.execute(
+        "SELECT COUNT(*) FROM transactions WHERE username=?",
+        (t.username,)).fetchone()[0]
+    conn_check.close()
+
+    # تحديد التصنيف السعري
+    def get_tier(amount):
+        if amount is None or amount < 5000: return "low"
+        elif amount < 10000: return "medium"
+        else: return "high"
+
+    user_tier = get_tier(avg_historical)
+    txn_tier  = get_tier(t.Transaction_Amount)
+    tier_order = {"low": 1, "medium": 2, "high": 3}
+
+    # القاعدة 1 — كارت جديد + مبلغ عالي
+    if t.Card_Age < 3 and t.Transaction_Amount >= 10000:
+        if user_tier != "high":
+            now = datetime.now()
+            transaction_id = "TXN-" + t.username + "-" + str(int(now.timestamp()))
+            is_weekend = 1 if now.weekday() >= 5 else 0
+            cum = calc_cumulative(t.username, t.Transaction_Amount, now)
+            conn = sqlite3.connect(DB_PATH)
+            conn.execute("INSERT INTO transactions VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (t.username, transaction_id, now.isoformat(), t.Transaction_Amount, t.Account_Balance,
+                 t.Device_Type, t.Merchant_Category, t.Card_Type, t.Card_Age, is_weekend,
+                 cum["Previous_Fraudulent_Activity"], cum["Daily_Transaction_Count"],
+                 cum["Avg_Transaction_Amount_7d"], cum["Failed_Transaction_Count_7d"],
+                 DEVICE_RISK.get(t.Device_Type,0), MERCHANT_RISK.get(t.Merchant_Category,0), CARD_RISK.get(t.Card_Type,0),
+                 1 if t.Device_Type=="Laptop" else 0, 1 if t.Device_Type=="Mobile" else 0, 1 if t.Device_Type=="Tablet" else 0,
+                 1 if t.Merchant_Category=="Clothing" else 0, 1 if t.Merchant_Category=="Electronics" else 0,
+                 1 if t.Merchant_Category=="Groceries" else 0, 1 if t.Merchant_Category=="Restaurants" else 0,
+                 1 if t.Merchant_Category=="Travel" else 0,
+                 1 if t.Card_Type=="Amex" else 0, 1 if t.Card_Type=="Discover" else 0,
+                 1 if t.Card_Type=="Mastercard" else 0, 1 if t.Card_Type=="Visa" else 0,
+                 "Fraud", 1.0, "Fraud", 1.0, "Fraud", 1.0, "Fraud", 3, 1.0))
+            conn.commit(); conn.close()
+            return TransactionResponse(
+                username=t.username, transaction_id=transaction_id, timestamp=now.isoformat(),
+                final_verdict="Fraud", fraud_votes=3, avg_probability=1.0,
+                rf_verdict="Fraud", rf_probability=1.0,
+                xgb_verdict="Fraud", xgb_probability=1.0,
+                lgb_verdict="Fraud", lgb_probability=1.0,
+                cumulative={**cum, "rule": "كارت جديد مع مبلغ عالي"})
+
+    # القاعدة 2 — حساب جديد + مبلغ فوق 20000
+    if total_txns == 0 and t.Transaction_Amount > 20000:
+        now = datetime.now()
+        transaction_id = "TXN-" + t.username + "-" + str(int(now.timestamp()))
+        is_weekend = 1 if now.weekday() >= 5 else 0
+        cum = calc_cumulative(t.username, t.Transaction_Amount, now)
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("INSERT INTO transactions VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (t.username, transaction_id, now.isoformat(), t.Transaction_Amount, t.Account_Balance,
+             t.Device_Type, t.Merchant_Category, t.Card_Type, t.Card_Age, is_weekend,
+             cum["Previous_Fraudulent_Activity"], cum["Daily_Transaction_Count"],
+             cum["Avg_Transaction_Amount_7d"], cum["Failed_Transaction_Count_7d"],
+             DEVICE_RISK.get(t.Device_Type,0), MERCHANT_RISK.get(t.Merchant_Category,0), CARD_RISK.get(t.Card_Type,0),
+             1 if t.Device_Type=="Laptop" else 0, 1 if t.Device_Type=="Mobile" else 0, 1 if t.Device_Type=="Tablet" else 0,
+             1 if t.Merchant_Category=="Clothing" else 0, 1 if t.Merchant_Category=="Electronics" else 0,
+             1 if t.Merchant_Category=="Groceries" else 0, 1 if t.Merchant_Category=="Restaurants" else 0,
+             1 if t.Merchant_Category=="Travel" else 0,
+             1 if t.Card_Type=="Amex" else 0, 1 if t.Card_Type=="Discover" else 0,
+             1 if t.Card_Type=="Mastercard" else 0, 1 if t.Card_Type=="Visa" else 0,
+             "Fraud", 1.0, "Fraud", 1.0, "Fraud", 1.0, "Fraud", 3, 1.0))
+        conn.commit(); conn.close()
+        return TransactionResponse(
+            username=t.username, transaction_id=transaction_id, timestamp=now.isoformat(),
+            final_verdict="Fraud", fraud_votes=3, avg_probability=1.0,
+            rf_verdict="Fraud", rf_probability=1.0,
+            xgb_verdict="Fraud", xgb_probability=1.0,
+            lgb_verdict="Fraud", lgb_probability=1.0,
+            cumulative={**cum, "rule": "حساب جديد مع مبلغ كبير جداً"})
+
+    # القاعدة 3 — تجاوز التصنيف السعري
+    if total_txns > 0 and tier_order[txn_tier] > tier_order[user_tier]:
+        now = datetime.now()
+        transaction_id = "TXN-" + t.username + "-" + str(int(now.timestamp()))
+        is_weekend = 1 if now.weekday() >= 5 else 0
+        cum = calc_cumulative(t.username, t.Transaction_Amount, now)
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("INSERT INTO transactions VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (t.username, transaction_id, now.isoformat(), t.Transaction_Amount, t.Account_Balance,
+             t.Device_Type, t.Merchant_Category, t.Card_Type, t.Card_Age, is_weekend,
+             cum["Previous_Fraudulent_Activity"], cum["Daily_Transaction_Count"],
+             cum["Avg_Transaction_Amount_7d"], cum["Failed_Transaction_Count_7d"],
+             DEVICE_RISK.get(t.Device_Type,0), MERCHANT_RISK.get(t.Merchant_Category,0), CARD_RISK.get(t.Card_Type,0),
+             1 if t.Device_Type=="Laptop" else 0, 1 if t.Device_Type=="Mobile" else 0, 1 if t.Device_Type=="Tablet" else 0,
+             1 if t.Merchant_Category=="Clothing" else 0, 1 if t.Merchant_Category=="Electronics" else 0,
+             1 if t.Merchant_Category=="Groceries" else 0, 1 if t.Merchant_Category=="Restaurants" else 0,
+             1 if t.Merchant_Category=="Travel" else 0,
+             1 if t.Card_Type=="Amex" else 0, 1 if t.Card_Type=="Discover" else 0,
+             1 if t.Card_Type=="Mastercard" else 0, 1 if t.Card_Type=="Visa" else 0,
+             "Fraud", 1.0, "Fraud", 1.0, "Fraud", 1.0, "Fraud", 3, 1.0))
+        conn.commit(); conn.close()
+        return TransactionResponse(
+            username=t.username, transaction_id=transaction_id, timestamp=now.isoformat(),
+            final_verdict="Fraud", fraud_votes=3, avg_probability=1.0,
+            rf_verdict="Fraud", rf_probability=1.0,
+            xgb_verdict="Fraud", xgb_probability=1.0,
+            lgb_verdict="Fraud", lgb_probability=1.0,
+            cumulative={**cum, "rule": "تجاوز التصنيف السعري المعتاد"})
     if t.Transaction_Amount > t.Account_Balance:
         now = datetime.now()
         transaction_id = "TXN-" + t.username + "-" + str(int(now.timestamp()))
