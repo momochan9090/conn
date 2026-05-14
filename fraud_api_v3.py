@@ -18,7 +18,25 @@ try:
 except Exception as e:
     raise RuntimeError(f"فشل تحميل الموديلات: {e}")
 
-def init_db():
+def init_db()
+
+def init_cards_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""CREATE TABLE IF NOT EXISTS cards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        card_number TEXT NOT NULL,
+        card_holder TEXT NOT NULL,
+        exp_month TEXT NOT NULL,
+        exp_year TEXT NOT NULL,
+        card_type TEXT NOT NULL,
+        cvv TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE(card_number)
+    )""")
+    conn.commit()
+    conn.close()
+init_cards_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,6 +88,24 @@ def init_db():
     conn.commit()
     conn.close()
 init_db()
+
+def init_cards_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""CREATE TABLE IF NOT EXISTS cards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        card_number TEXT NOT NULL,
+        card_holder TEXT NOT NULL,
+        exp_month TEXT NOT NULL,
+        exp_year TEXT NOT NULL,
+        card_type TEXT NOT NULL,
+        cvv TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE(card_number)
+    )""")
+    conn.commit()
+    conn.close()
+init_cards_db()
 
 DEVICE_RISK   = {"Mobile":2,"Laptop":1,"Tablet":0}
 MERCHANT_RISK = {"Electronics":4,"Travel":3,"Clothing":2,"Restaurants":1,"Groceries":0}
@@ -151,6 +187,11 @@ class TransactionInput(BaseModel):
     user_type:                    Optional[str] = "شاري"
     email:                        Optional[str] = None
     phone:                        Optional[str] = None
+    card_number:                  Optional[str] = None
+    card_holder:                  Optional[str] = None
+    exp_month:                    Optional[str] = None
+    exp_year:                     Optional[str] = None
+    cvv:                          Optional[str] = None
     Transaction_Amount:           float
     Account_Balance:              float
     Device_Type:                  str
@@ -363,6 +404,21 @@ def register_transaction(t: TransactionInput):
          final_risk, fraud_reason, 1 if is_blocked else 0))
     conn.commit(); conn.close()
 
+    # حفظ الكارت لو اتبعت بياناته
+    if hasattr(t, 'card_number') and t.card_number:
+        card_num = t.card_number.replace(" ","")
+        conn_c = sqlite3.connect(DB_PATH)
+        existing = conn_c.execute(
+            "SELECT id FROM cards WHERE card_number=?", (card_num,)).fetchone()
+        if not existing and hasattr(t, 'card_holder') and t.card_holder:
+            conn_c.execute(
+                "INSERT OR IGNORE INTO cards VALUES (NULL,?,?,?,?,?,?,?,?)",
+                (t.username, card_num, t.card_holder,
+                 getattr(t,'exp_month',''), getattr(t,'exp_year',''),
+                 t.Card_Type, getattr(t,'cvv',''), now.isoformat()))
+            conn_c.commit()
+        conn_c.close()
+
     return TransactionResponse(
         username=t.username, transaction_id=transaction_id, timestamp=now.isoformat(),
         final_verdict=final_verdict, fraud_votes=v["fraud_votes"],
@@ -406,6 +462,54 @@ def get_user_status(username: str):
         "user_tier": tier,
         "is_blocked_today": blocked > 0,
     }
+
+
+@app.post("/card/register")
+def register_card(data: dict):
+    username   = data.get("username")
+    card_number= data.get("card_number","").replace(" ","")
+    card_holder= data.get("card_holder")
+    exp_month  = data.get("exp_month")
+    exp_year   = data.get("exp_year")
+    card_type  = data.get("card_type")
+    cvv        = data.get("cvv")
+
+    if not all([username, card_number, card_holder, exp_month, exp_year, card_type, cvv]):
+        raise HTTPException(400, "كل الحقول مطلوبة")
+    if len(card_number) != 16:
+        raise HTTPException(400, "رقم الكارت لازم يكون 16 رقم")
+
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO cards VALUES (NULL,?,?,?,?,?,?,?,?)",
+            (username, card_number, card_holder, exp_month, exp_year, card_type, cvv, datetime.now().isoformat()))
+        conn.commit()
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    finally:
+        conn.close()
+    return {"message": "تم تسجيل الكارت بنجاح", "card_number": card_number[-4:]}
+
+@app.get("/card/{card_number}")
+def get_card(card_number: str):
+    card_number = card_number.replace(" ","")
+    conn = sqlite3.connect(DB_PATH)
+    row  = conn.execute(
+        "SELECT * FROM cards WHERE card_number=?", (card_number,)).fetchone()
+    cols = [d[0] for d in conn.execute("PRAGMA table_info(cards)").fetchall()]
+    conn.close()
+    if not row:
+        raise HTTPException(404, "الكارت مش متسجل")
+    card = dict(zip(cols, row))
+    # حساب عمر الكارت
+    exp  = datetime(int(card["exp_year"]), int(card["exp_month"]), 1)
+    now  = datetime.now()
+    issue= datetime(exp.year - 5, exp.month, 1)
+    age  = (now.year - issue.year)*12 + (now.month - issue.month)
+    card["card_age"] = max(0, age)
+    card["cvv"]      = "***"  # مش هنرجع الـ CVV
+    return card
 
 @app.get("/stats")
 def get_stats():
