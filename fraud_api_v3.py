@@ -86,57 +86,6 @@ def init_cards_db():
     )""")
     conn.commit()
     conn.close()
-init_cards_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""CREATE TABLE IF NOT EXISTS transactions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL,
-        user_type TEXT DEFAULT 'شاري',
-        email TEXT DEFAULT NULL,
-        phone TEXT DEFAULT NULL,
-        transaction_id TEXT NOT NULL,
-        timestamp TEXT NOT NULL,
-        Transaction_Amount REAL NOT NULL,
-        Account_Balance REAL NOT NULL,
-        Device_Type TEXT NOT NULL,
-        Merchant_Category TEXT NOT NULL,
-        Card_Type TEXT NOT NULL,
-        Card_Age INTEGER NOT NULL,
-        Is_Weekend INTEGER NOT NULL,
-        Previous_Fraudulent_Activity INTEGER NOT NULL,
-        Daily_Transaction_Count INTEGER NOT NULL,
-        Avg_Transaction_Amount_7d REAL NOT NULL,
-        Failed_Transaction_Count_7d INTEGER NOT NULL,
-        Device_Risk INTEGER NOT NULL,
-        Merchant_Risk INTEGER NOT NULL,
-        Card_Risk INTEGER NOT NULL,
-        Device_Type_Laptop INTEGER NOT NULL,
-        Device_Type_Mobile INTEGER NOT NULL,
-        Device_Type_Tablet INTEGER NOT NULL,
-        Merchant_Category_Clothing INTEGER NOT NULL,
-        Merchant_Category_Electronics INTEGER NOT NULL,
-        Merchant_Category_Groceries INTEGER NOT NULL,
-        Merchant_Category_Restaurants INTEGER NOT NULL,
-        Merchant_Category_Travel INTEGER NOT NULL,
-        Card_Type_Amex INTEGER NOT NULL,
-        Card_Type_Discover INTEGER NOT NULL,
-        Card_Type_Mastercard INTEGER NOT NULL,
-        Card_Type_Visa INTEGER NOT NULL,
-        rf_verdict TEXT NOT NULL,
-        rf_probability REAL NOT NULL,
-        xgb_verdict TEXT NOT NULL,
-        xgb_probability REAL NOT NULL,
-        lgb_verdict TEXT NOT NULL,
-        lgb_probability REAL NOT NULL,
-        final_verdict TEXT NOT NULL,
-        fraud_votes INTEGER NOT NULL,
-        avg_probability REAL NOT NULL,
-        risk_score REAL DEFAULT 0,
-        fraud_reason TEXT DEFAULT NULL,
-        is_blocked INTEGER DEFAULT 0
-    )""")
-    conn.commit()
-    conn.close()
 init_db()
 
 def init_cards_db():
