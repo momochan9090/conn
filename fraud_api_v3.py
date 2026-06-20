@@ -307,7 +307,7 @@ def register_transaction(t: TransactionInput):
              1 if t.Card_Type=="Amex" else 0, 1 if t.Card_Type=="Discover" else 0,
              1 if t.Card_Type=="Mastercard" else 0, 1 if t.Card_Type=="Visa" else 0,
              "Fraud", 1.0, "Fraud", 1.0, "Fraud", 1.0, "Fraud", 3, 1.0, 1.0,
-             "رصيد غير كافي", 0, 0))
+             "رصيد غير كافي", 0))
         conn.commit(); conn.close()
         return TransactionResponse(
             username=t.username, transaction_id=transaction_id, timestamp=now.isoformat(),
