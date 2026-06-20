@@ -18,26 +18,6 @@ try:
 except Exception as e:
     raise RuntimeError(f"فشل تحميل الموديلات: {e}")
 
-def migrate_db():
-    conn = sqlite3.connect(DB_PATH)
-    existing_cols = [r[1] for r in conn.execute("PRAGMA table_info(transactions)").fetchall()]
-    new_cols = {
-        "user_type":  "TEXT DEFAULT 'شاري'",
-        "email":      "TEXT DEFAULT NULL",
-        "phone":      "TEXT DEFAULT NULL",
-        "risk_score": "REAL DEFAULT 0",
-        "fraud_reason": "TEXT DEFAULT NULL",
-        "is_blocked": "INTEGER DEFAULT 0"
-    }
-    for col, col_type in new_cols.items():
-        if col not in existing_cols:
-            conn.execute(f"ALTER TABLE transactions ADD COLUMN {col} {col_type}")
-            print(f"✅ تم إضافة column: {col}")
-    conn.commit()
-    conn.close()
-
-migrate_db()
-
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""CREATE TABLE IF NOT EXISTS transactions (
@@ -108,22 +88,25 @@ def init_cards_db():
     conn.close()
 init_db()
 
-def init_cards_db():
+def migrate_db():
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("""CREATE TABLE IF NOT EXISTS cards (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL,
-        card_number TEXT NOT NULL,
-        card_holder TEXT NOT NULL,
-        exp_month TEXT NOT NULL,
-        exp_year TEXT NOT NULL,
-        card_type TEXT NOT NULL,
-        cvv TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        UNIQUE(card_number)
-    )""")
+    existing_cols = [r[1] for r in conn.execute("PRAGMA table_info(transactions)").fetchall()]
+    new_cols = {
+        "user_type":    "TEXT DEFAULT 'شاري'",
+        "email":        "TEXT DEFAULT NULL",
+        "phone":        "TEXT DEFAULT NULL",
+        "risk_score":   "REAL DEFAULT 0",
+        "fraud_reason": "TEXT DEFAULT NULL",
+        "is_blocked":   "INTEGER DEFAULT 0"
+    }
+    for col, col_type in new_cols.items():
+        if col not in existing_cols:
+            conn.execute(f"ALTER TABLE transactions ADD COLUMN {col} {col_type}")
+            print(f"تم إضافة column: {col}")
     conn.commit()
     conn.close()
+
+migrate_db()
 init_cards_db()
 
 DEVICE_RISK   = {"Mobile":2,"Laptop":1,"Tablet":0}
