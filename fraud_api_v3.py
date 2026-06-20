@@ -18,6 +18,26 @@ try:
 except Exception as e:
     raise RuntimeError(f"فشل تحميل الموديلات: {e}")
 
+def migrate_db():
+    conn = sqlite3.connect(DB_PATH)
+    existing_cols = [r[1] for r in conn.execute("PRAGMA table_info(transactions)").fetchall()]
+    new_cols = {
+        "user_type":  "TEXT DEFAULT 'شاري'",
+        "email":      "TEXT DEFAULT NULL",
+        "phone":      "TEXT DEFAULT NULL",
+        "risk_score": "REAL DEFAULT 0",
+        "fraud_reason": "TEXT DEFAULT NULL",
+        "is_blocked": "INTEGER DEFAULT 0"
+    }
+    for col, col_type in new_cols.items():
+        if col not in existing_cols:
+            conn.execute(f"ALTER TABLE transactions ADD COLUMN {col} {col_type}")
+            print(f"✅ تم إضافة column: {col}")
+    conn.commit()
+    conn.close()
+
+migrate_db()
+
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""CREATE TABLE IF NOT EXISTS transactions (
@@ -290,7 +310,7 @@ def register_transaction(t: TransactionInput):
     if t.Transaction_Amount > t.Account_Balance:
         cum = calc_cumulative(t.username, t.Transaction_Amount, now)
         conn = sqlite3.connect(DB_PATH)
-        conn.execute("INSERT INTO transactions VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        conn.execute("INSERT INTO transactions VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (t.username, t.user_type, t.email, t.phone, transaction_id, now.isoformat(),
              t.Transaction_Amount, t.Account_Balance, t.Device_Type, t.Merchant_Category,
              t.Card_Type, t.Card_Age, is_weekend,
@@ -304,7 +324,7 @@ def register_transaction(t: TransactionInput):
              1 if t.Card_Type=="Amex" else 0, 1 if t.Card_Type=="Discover" else 0,
              1 if t.Card_Type=="Mastercard" else 0, 1 if t.Card_Type=="Visa" else 0,
              "Fraud", 1.0, "Fraud", 1.0, "Fraud", 1.0, "Fraud", 3, 1.0, 1.0,
-             "رصيد غير كافي", 0))
+             "رصيد غير كافي", 0, 0))
         conn.commit(); conn.close()
         return TransactionResponse(
             username=t.username, transaction_id=transaction_id, timestamp=now.isoformat(),
@@ -383,7 +403,7 @@ def register_transaction(t: TransactionInput):
     # حفظ في DB
     # ============================================================
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("INSERT INTO transactions VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    conn.execute("INSERT INTO transactions VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (t.username, t.user_type, t.email, t.phone, transaction_id, now.isoformat(),
          t.Transaction_Amount, t.Account_Balance, t.Device_Type, t.Merchant_Category,
          t.Card_Type, t.Card_Age, is_weekend,
